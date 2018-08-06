@@ -30,7 +30,7 @@ import static org.junit.Assert.assertTrue;
 public final class SamplingServiceTest {
     
     @AfterClass
-    public static void tearDown() throws Exception {
+    public static void tearDown() throws NoSuchFieldException, IllegalAccessException {
         Field onField = SamplingService.class.getDeclaredField("on");
         onField.setAccessible(true);
         onField.set(SamplingService.getInstance(), false);
@@ -46,7 +46,7 @@ public final class SamplingServiceTest {
     }
     
     @Test
-    public void asserTrySampling() {
+    public void assertTrySampling() {
         SamplingService.getInstance().init(1);
         assertTrue(SamplingService.getInstance().trySampling());
         SamplingService.getInstance().samplingAdd();

@@ -18,14 +18,15 @@
 package io.shardingsphere.dbtest.env.dataset;
 
 import com.google.common.base.Joiner;
+import io.shardingsphere.core.constant.DatabaseType;
 import io.shardingsphere.core.rule.DataNode;
 import io.shardingsphere.core.util.InlineExpressionParser;
 import io.shardingsphere.dbtest.cases.assertion.root.SQLValue;
 import io.shardingsphere.dbtest.cases.assertion.root.SQLValueGroup;
-import io.shardingsphere.dbtest.cases.dataset.init.DataSetColumnMetadata;
-import io.shardingsphere.dbtest.cases.dataset.init.DataSetMetadata;
-import io.shardingsphere.dbtest.cases.dataset.init.DataSetRow;
-import io.shardingsphere.dbtest.cases.dataset.init.DataSetsRoot;
+import io.shardingsphere.dbtest.cases.dataset.DataSet;
+import io.shardingsphere.dbtest.cases.dataset.metadata.DataSetColumn;
+import io.shardingsphere.dbtest.cases.dataset.metadata.DataSetMetadata;
+import io.shardingsphere.dbtest.cases.dataset.row.DataSetRow;
 
 import javax.sql.DataSource;
 import javax.xml.bind.JAXBContext;
@@ -50,13 +51,13 @@ import java.util.Map.Entry;
  */
 public final class DataSetEnvironmentManager {
     
-    private final DataSetsRoot dataSetsRoot;
+    private final DataSet dataSet;
     
     private final Map<String, DataSource> dataSourceMap;
     
     public DataSetEnvironmentManager(final String path, final Map<String, DataSource> dataSourceMap) throws IOException, JAXBException {
         try (FileReader reader = new FileReader(path)) {
-            dataSetsRoot = (DataSetsRoot) JAXBContext.newInstance(DataSetsRoot.class).createUnmarshaller().unmarshal(reader);
+            dataSet = (DataSet) JAXBContext.newInstance(DataSet.class).createUnmarshaller().unmarshal(reader);
         }
         this.dataSourceMap = dataSourceMap;
     }
@@ -73,13 +74,14 @@ public final class DataSetEnvironmentManager {
         for (Entry<DataNode, List<DataSetRow>> entry : dataNodeListMap.entrySet()) {
             DataNode dataNode = entry.getKey();
             List<DataSetRow> dataSetRows = entry.getValue();
-            DataSetMetadata dataSetMetadata = dataSetsRoot.findDataSetMetadata(dataNode);
-            String insertSQL = generateInsertSQL(dataNode.getTableName(), dataSetMetadata.getColumnMetadataList());
+            DataSetMetadata dataSetMetadata = dataSet.findMetadata(dataNode);
             List<SQLValueGroup> sqlValueGroups = new LinkedList<>();
             for (DataSetRow row : dataSetRows) {
                 sqlValueGroups.add(new SQLValueGroup(dataSetMetadata, row.getValues()));
             }
             try (Connection connection = dataSourceMap.get(dataNode.getDataSourceName()).getConnection()) {
+                String insertSQL = generateInsertSQL(generateTableName(dataNode.getTableName(), DatabaseType.valueFrom(connection.getMetaData().getDatabaseProductName())),
+                    dataSetMetadata.getColumns());
                 executeBatch(connection, insertSQL, sqlValueGroups);
             }
         }
@@ -87,7 +89,7 @@ public final class DataSetEnvironmentManager {
     
     private Map<DataNode, List<DataSetRow>> getDataSetRowMap() {
         Map<DataNode, List<DataSetRow>> result = new LinkedHashMap<>();
-        for (DataSetRow each : dataSetsRoot.getDataSetRows()) {
+        for (DataSetRow each : dataSet.getRows()) {
             DataNode dataNode = new DataNode(each.getDataNode());
             if (!result.containsKey(dataNode)) {
                 result.put(dataNode, new LinkedList<DataSetRow>());
@@ -97,10 +99,10 @@ public final class DataSetEnvironmentManager {
         return result;
     }
     
-    private String generateInsertSQL(final String tableName, final List<DataSetColumnMetadata> columnMetadata) {
+    private String generateInsertSQL(final String tableName, final List<DataSetColumn> columnMetadata) {
         List<String> columnNames = new LinkedList<>();
         List<String> placeholders = new LinkedList<>();
-        for (DataSetColumnMetadata each : columnMetadata) {
+        for (DataSetColumn each : columnMetadata) {
             columnNames.add(each.getName());
             placeholders.add("?");
         }
@@ -137,7 +139,8 @@ public final class DataSetEnvironmentManager {
     private void clear(final String dataSourceName, final Collection<String> tableNames) throws SQLException {
         try (Connection connection = dataSourceMap.get(dataSourceName).getConnection()) {
             for (String each : tableNames) {
-                try (PreparedStatement preparedStatement = connection.prepareStatement(String.format("TRUNCATE TABLE %s", each))) {
+                String tableName = generateTableName(each, DatabaseType.valueFrom(connection.getMetaData().getDatabaseProductName()));
+                try (PreparedStatement preparedStatement = connection.prepareStatement(String.format("TRUNCATE TABLE %s", tableName))) {
                     preparedStatement.executeUpdate();
                     // CHECKSTYLE:OFF
                 } catch (final SQLException ex) {
@@ -149,7 +152,7 @@ public final class DataSetEnvironmentManager {
     
     private Map<String, Collection<String>> getDataNodeMap() {
         Map<String, Collection<String>> result = new LinkedHashMap<>();
-        for (DataSetMetadata each : dataSetsRoot.getMetadataList()) {
+        for (DataSetMetadata each : dataSet.getMetadataList()) {
             for (Entry<String, Collection<String>> entry : getDataNodeMap(each).entrySet()) {
                 if (!result.containsKey(entry.getKey())) {
                     result.put(entry.getKey(), new LinkedList<String>());
@@ -168,8 +171,22 @@ public final class DataSetEnvironmentManager {
                 result.put(dataNode.getDataSourceName(), new LinkedList<String>());
             }
             result.get(dataNode.getDataSourceName()).add(dataNode.getTableName());
-            
         }
         return result;
+    }
+    
+    private String generateTableName(final String tableName, final DatabaseType databaseType) {
+        switch (databaseType) {
+            case H2:
+            case PostgreSQL:
+            case Oracle:
+                return "\"" + tableName + "\"";
+            case MySQL:
+                return "`" + tableName + "`";
+            case SQLServer:
+                return "[" + tableName + "]";
+            default:
+                throw new UnsupportedOperationException(String.format("Cannot support database [%s].", databaseType));
+        }
     }
 }

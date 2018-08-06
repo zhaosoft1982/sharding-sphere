@@ -32,7 +32,7 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.core.Is.isA;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -41,7 +41,7 @@ import static org.mockito.Mockito.mock;
 public final class ShardingJDBCTracerTest {
     
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws NoSuchFieldException, IllegalAccessException {
         System.setProperty("shardingjdbc.opentracing.tracer.class", FooTracer.class.getName());
         clearGlobalTracer();
         unregisterEventBus();

@@ -9,6 +9,8 @@
 1. [ISSUE #290](https://github.com/sharding-sphere/sharding-sphere/issues/290) Support batch INSERT statements
 1. [ISSUE #501](https://github.com/sharding-sphere/sharding-sphere/issues/501) Support OR statement
 1. [ISSUE #862](https://github.com/sharding-sphere/sharding-sphere/issues/862) Support data orchestration in cloud side
+1. [ISSUE #980](https://github.com/sharding-sphere/sharding-sphere/issues/980) Support DCL statement
+1. [ISSUE #936](https://github.com/sharding-sphere/sharding-sphere/issues/936) Support the registry center for Proxy
 
 ### Enhancements
 
@@ -23,9 +25,12 @@
 1. [ISSUE #720](https://github.com/sharding-sphere/sharding-sphere/issues/720) Support Spring bean namespace to inject sharding algorithm objects
 1. [ISSUE #773](https://github.com/sharding-sphere/sharding-sphere/issues/773) Support sharding and autoincrement primary key of INSERT statements without column names
 1. [ISSUE #916](https://github.com/sharding-sphere/sharding-sphere/issues/916) Support authorization for Sharding Proxy
+1. [ISSUE #935](https://github.com/sharding-sphere/sharding-sphere/issues/935) Support to store configuration by using Yaml instead of JSON in registry center.
+1. [ISSUE #1004](https://github.com/sharding-sphere/sharding-sphere/issues/1004) Support props configuration for MasterSlave rule.
 
 ### Bug Fixes
 
+1. [ISSUE #372](https://github.com/sharding-sphere/sharding-sphere/issues/372) Reuse PreparedStatement cause cache of route result do not clean
 1. [ISSUE #628](https://github.com/sharding-sphere/sharding-sphere/issues/628) Support data type jsonb for PostgreSQL
 1. [ISSUE #629](https://github.com/sharding-sphere/sharding-sphere/issues/629) Support transaction isolation on JDBC
 1. [ISSUE #646](https://github.com/sharding-sphere/sharding-sphere/issues/646) When aliases in SELECT ITEMS correspond to the real column names of GROUP BY or ORDER BY, there is no need to add columns
@@ -33,6 +38,9 @@
 1. [ISSUE #806](https://github.com/sharding-sphere/sharding-sphere/issues/806) SQL parse error with `NOT IN`
 1. [ISSUE #827](https://github.com/sharding-sphere/sharding-sphere/issues/827) Fix endless loop for bad SQL like `SELECT * FROM table WHERE id IN ()`
 1. [ISSUE #919](https://github.com/sharding-sphere/sharding-sphere/issues/919) Use groovy to parse inline expression may cause memory leak
+1. [ISSUE #993](https://github.com/sharding-sphere/sharding-sphere/issues/993) Fail to parsing PostgreSQL due to the quotation
+1. [ISSUE #1011](https://github.com/sharding-sphere/sharding-sphere/issues/1011) Can't resolve placeholder in spring boot configuration yaml
+1. [ISSUE #1015](https://github.com/sharding-sphere/sharding-sphere/issues/1015) Support the statement of `SELECT id, COUNT(*) FROM table GROUP BY 1,2`
 
 ## 2.0.3
 
