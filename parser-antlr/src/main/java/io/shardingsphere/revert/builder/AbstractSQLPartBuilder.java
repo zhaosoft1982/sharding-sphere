@@ -62,7 +62,7 @@ public class AbstractSQLPartBuilder implements SQLPartBuilder {
 			sqlPart.setUpdateConditionString(expr);
 		}
 
-		List<TerminalNode> allParams = TreeUtils.getAllTerminalByType(where, MySQLDMLParser.QUESTION);
+		List<TerminalNode> allParams = TreeUtils.getAllTerminalByType(root, MySQLDMLParser.QUESTION);
 		int paramCount = allParams.size();
 		if (allParams.size() > 0) {
 			List<TerminalNode> whereParams = TreeUtils.getAllTerminalByType(where, MySQLDMLParser.QUESTION);
@@ -72,7 +72,7 @@ public class AbstractSQLPartBuilder implements SQLPartBuilder {
 			}
 
 			sqlPart.getWhereParamIndexRange().add(paramCount - whereParamCount);
-			sqlPart.getWhereParamIndexRange().add(paramCount - 1);
+			sqlPart.getWhereParamIndexRange().add(paramCount);
 
 		}
 	}
