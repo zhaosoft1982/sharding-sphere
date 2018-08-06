@@ -58,7 +58,7 @@ public class UpdateBuilder extends AbstractSQLPartBuilder {
 
 				if (null != tableName && !"".equals(tableName)) {
 					sqlPart.getTableAlias().put(alias, tableName);
-					sqlPart.getUpdateTables().add(tableName);
+					sqlPart.setUpdateTable(tableName);
 				}
 			}
 		}

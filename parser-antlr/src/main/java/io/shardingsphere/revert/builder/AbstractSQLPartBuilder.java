@@ -54,26 +54,26 @@ public class AbstractSQLPartBuilder implements SQLPartBuilder {
 	protected void buildUpdateConditionString(SQLPartInfo sqlPart, ParserRuleContext root) {
 		WhereClauseContext where = (WhereClauseContext) TreeUtils.getFirstDescendant(root, WhereClauseContext.class,
 				false);
-		
-		
+
 		if (where != null) {
-			ParserRuleContext exprCtx = (ParserRuleContext)where.getChild(1);
-			String expr = sqlPart.getSql().substring(exprCtx.getStart().getStartIndex(), exprCtx.getStop().getStartIndex());
+			ParserRuleContext exprCtx = (ParserRuleContext) where.getChild(1);
+			String expr = sqlPart.getSql().substring(exprCtx.getStart().getStartIndex(),
+					exprCtx.getStop().getStopIndex() + 1);
 			sqlPart.setUpdateConditionString(expr);
 		}
-		
+
 		List<TerminalNode> allParams = TreeUtils.getAllTerminalByType(where, MySQLDMLParser.QUESTION);
 		int paramCount = allParams.size();
-		if(allParams.size() > 0) {
+		if (allParams.size() > 0) {
 			List<TerminalNode> whereParams = TreeUtils.getAllTerminalByType(where, MySQLDMLParser.QUESTION);
 			int whereParamCount = 0;
 			if (where != null) {
 				whereParamCount = whereParams.size();
 			}
-			
+
 			sqlPart.getWhereParamIndexRange().add(paramCount - whereParamCount);
 			sqlPart.getWhereParamIndexRange().add(paramCount - 1);
-			
+
 		}
 	}
 

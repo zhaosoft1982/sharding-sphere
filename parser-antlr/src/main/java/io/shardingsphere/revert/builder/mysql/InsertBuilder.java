@@ -19,7 +19,7 @@ public class InsertBuilder extends AbstractSQLPartBuilder {
 				tableName = root.getChild(2).getText();
 			}
 			sqlPart.getTableAlias().put(tableName, tableName);
-			sqlPart.getUpdateTables().add(tableName);
+			sqlPart.setUpdateTable(tableName);
 		}
 	}
 	

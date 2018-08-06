@@ -1,5 +1,8 @@
 package io.shardingsphere.revert;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,9 +11,10 @@ import lombok.Setter;
 public class RevertContext {
 	private String originSQL;
 	private Object[] originParams;
-	private String selectSQL;
-	private Object[] selectParams;
+	private String selectSql;
+	private List<Object[]> selectResult = new ArrayList<>();
+	private Object[] selectParam;
 	private String revertSQL;
-	private Object[] revertParams;
-	
+	private List<Object[]> revertParam = new ArrayList<>();
+
 }

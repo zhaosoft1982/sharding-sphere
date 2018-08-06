@@ -17,7 +17,7 @@ public class DeleteBuilder extends AbstractSQLPartBuilder {
 	public void buildTableAlias(SQLPartInfo sqlPart, ParserRuleContext root) {
 		String tableName = getTableFromSingle(root);
 		sqlPart.getTableAlias().put(tableName, tableName);
-		sqlPart.getUpdateTables().add(tableName);
+		sqlPart.setUpdateTable(tableName);
 	}
 
 	private String getTableFromSingle(ParserRuleContext root) {

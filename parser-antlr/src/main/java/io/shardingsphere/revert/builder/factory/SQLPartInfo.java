@@ -17,9 +17,9 @@ public class SQLPartInfo {
 	private DMLType type;
 	private String sql;
 	private List<String> updateColumns = new ArrayList<>();
-	private List<String> updateTables = new ArrayList<>();
+	private String updateTable;
 	private Map<String, String> tableAlias = new HashMap<>();
 	private String updateConditionString;
 	private List<Integer> whereParamIndexRange = new ArrayList<>();
-	
+
 }
