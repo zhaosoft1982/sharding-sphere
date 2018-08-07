@@ -254,6 +254,7 @@ public final class RevertEngine {
 				List<Object> rowRevertParam = (List<Object>) context.getRevertParam()
 						.get(context.getRevertParam().size() - 1);
 				rowRevertParam.add(param);
+				pos++;
 			}
 		}
 
