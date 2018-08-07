@@ -15,27 +15,14 @@
  * </p>
  */
 
-package io.shardingsphere.proxy.backend.netty;
-
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+package io.shardingsphere.proxy.backend.netty.client.response;
 
 /**
- * DataSourceConfig.
- *
+ * Auth Type.
+ * 
  * @author linjiaqi
  */
-@RequiredArgsConstructor
-@Getter
-public final class DataSourceConfig {
+public enum AuthType {
     
-    private final String ip;
-    
-    private final int port;
-    
-    private final String database;
-    
-    private final String username;
-    
-    private final String password;
+    UN_AUTH, AUTHING, AUTH_FIN
 }

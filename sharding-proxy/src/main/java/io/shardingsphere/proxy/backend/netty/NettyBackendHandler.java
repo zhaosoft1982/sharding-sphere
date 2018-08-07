@@ -34,9 +34,10 @@ import io.shardingsphere.core.routing.router.masterslave.MasterSlaveRouter;
 import io.shardingsphere.proxy.backend.AbstractBackendHandler;
 import io.shardingsphere.proxy.backend.BackendExecutorContext;
 import io.shardingsphere.proxy.backend.ResultPacket;
+import io.shardingsphere.proxy.backend.netty.client.BackendNettyClient;
 import io.shardingsphere.proxy.backend.netty.future.FutureRegistry;
 import io.shardingsphere.proxy.backend.netty.future.SynchronizedFuture;
-import io.shardingsphere.proxy.backend.netty.mysql.MySQLQueryResult;
+import io.shardingsphere.proxy.backend.netty.client.response.mysql.MySQLQueryResult;
 import io.shardingsphere.proxy.config.ProxyTableMetaDataConnectionManager;
 import io.shardingsphere.proxy.config.RuleRegistry;
 import io.shardingsphere.proxy.runtime.ChannelRegistry;
@@ -148,7 +149,7 @@ public final class NettyBackendHandler extends AbstractBackendHandler {
         if (!channelMap.containsKey(dataSourceName)) {
             channelMap.put(dataSourceName, new ArrayList<Channel>());
         }
-        SimpleChannelPool pool = ShardingProxyClient.getInstance().getPoolMap().get(dataSourceName);
+        SimpleChannelPool pool = BackendNettyClient.getInstance().getPoolMap().get(dataSourceName);
         Channel channel = pool.acquire().get(RULE_REGISTRY.getBackendNIOConfig().getConnectionTimeoutSeconds(), TimeUnit.SECONDS);
         channelMap.get(dataSourceName).add(channel);
         ChannelRegistry.getInstance().putConnectionId(channel.id().asShortText(), connectionId);
@@ -208,7 +209,7 @@ public final class NettyBackendHandler extends AbstractBackendHandler {
         if (null == mergedResult || !mergedResult.next()) {
             for (Entry<String, List<Channel>> entry : channelMap.entrySet()) {
                 for (Channel each : entry.getValue()) {
-                    ShardingProxyClient.getInstance().getPoolMap().get(entry.getKey()).release(each);
+                    BackendNettyClient.getInstance().getPoolMap().get(entry.getKey()).release(each);
                 }
             }
             return false;

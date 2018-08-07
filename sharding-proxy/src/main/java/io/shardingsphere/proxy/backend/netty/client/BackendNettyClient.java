@@ -15,9 +15,8 @@
  * </p>
  */
 
-package io.shardingsphere.proxy.backend.netty;
+package io.shardingsphere.proxy.backend.netty.client;
 
-import com.google.common.collect.Maps;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
@@ -32,28 +31,28 @@ import io.netty.channel.pool.ChannelPoolMap;
 import io.netty.channel.pool.FixedChannelPool;
 import io.netty.channel.pool.SimpleChannelPool;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.shardingsphere.core.rule.DataSourceParameter;
+import io.shardingsphere.core.metadata.datasource.DataSourceMetaData;
 import io.shardingsphere.proxy.config.RuleRegistry;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Sharding-Proxy Client.
+ * Backend connection client for netty.
  *
  * @author wangkai
  * @author linjiaqi
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
-public final class ShardingProxyClient {
+public final class BackendNettyClient {
     
-    private static final ShardingProxyClient INSTANCE = new ShardingProxyClient();
+    private static final BackendNettyClient INSTANCE = new BackendNettyClient();
     
     private static final RuleRegistry RULE_REGISTRY = RuleRegistry.getInstance();
     
@@ -63,31 +62,28 @@ public final class ShardingProxyClient {
     
     private static final int CONNECTION_TIMEOUT_SECONDS = RULE_REGISTRY.getBackendNIOConfig().getConnectionTimeoutSeconds();
     
-    private final Map<String, DataSourceConfig> dataSourceConfigMap = Maps.newHashMap();
-    
     private EventLoopGroup workerGroup;
     
     @Getter
     private ChannelPoolMap<String, SimpleChannelPool> poolMap;
     
     /**
-     * Start Sharding-Proxy.
+     * Get instance of backend connection client for netty.
      *
-     * @throws MalformedURLException url is illegal.
+     * @return instance of backend connection client for netty
+     */
+    public static BackendNettyClient getInstance() {
+        return INSTANCE;
+    }
+    
+    /**
+     * Start backend connection client for netty.
+     *
      * @throws InterruptedException  interrupted exception
      */
-    public void start() throws MalformedURLException, InterruptedException {
-        Map<String, DataSourceParameter> dataSourceConfigurationMap = RULE_REGISTRY.getDataSourceConfigurationMap();
-        for (Map.Entry<String, DataSourceParameter> each : dataSourceConfigurationMap.entrySet()) {
-            URL url = new URL(each.getValue().getUrl().replaceAll("jdbc:mysql:", "http:"));
-            final String ip = url.getHost();
-            final int port = url.getPort();
-            final String database = url.getPath().substring(1);
-            final String username = (each.getValue()).getUsername();
-            final String password = (each.getValue()).getPassword();
-            dataSourceConfigMap.put(each.getKey(), new DataSourceConfig(ip, port, database, username, password));
-        }
-        final Bootstrap bootstrap = new Bootstrap();
+    public void start() throws InterruptedException {
+        Bootstrap bootstrap = new Bootstrap();
+        // TODO :jiaqi where to init workerGroup?
         if (workerGroup instanceof EpollEventLoopGroup) {
             groupsEpoll(bootstrap);
         } else {
@@ -97,10 +93,10 @@ public final class ShardingProxyClient {
     }
     
     /**
-     * Stop Sharding-Proxy.
+     * Stop backend connection client for netty.
      */
     public void stop() {
-        if (workerGroup != null) {
+        if (null != workerGroup) {
             workerGroup.shutdownGracefully();
         }
     }
@@ -128,13 +124,14 @@ public final class ShardingProxyClient {
     
     private void initPoolMap(final Bootstrap bootstrap) throws InterruptedException {
         poolMap = new AbstractChannelPoolMap<String, SimpleChannelPool>() {
+            
             @Override
-            protected SimpleChannelPool newPool(final String datasourceName) {
-                DataSourceConfig dataSourceConfig = dataSourceConfigMap.get(datasourceName);
-                return new FixedChannelPool(bootstrap.remoteAddress(dataSourceConfig.getIp(), dataSourceConfig.getPort()), new NettyChannelPoolHandler(dataSourceConfig), MAX_CONNECTIONS);
+            protected SimpleChannelPool newPool(final String dataSourceName) {
+                DataSourceMetaData dataSourceMetaData = RULE_REGISTRY.getMetaData().getDataSource().getActualDataSourceMetaData(dataSourceName);
+                return new FixedChannelPool(bootstrap.remoteAddress(dataSourceMetaData.getHostName(), dataSourceMetaData.getPort()), new BackendNettyClientChannelPoolHandler(dataSourceName), MAX_CONNECTIONS);
             }
         };
-        for (String each : dataSourceConfigMap.keySet()) {
+        for (String each : RULE_REGISTRY.getDataSourceConfigurationMap().keySet()) {
             SimpleChannelPool pool = poolMap.get(each);
             Channel[] channels = new Channel[MAX_CONNECTIONS];
             for (int i = 0; i < MAX_CONNECTIONS; i++) {
@@ -148,14 +145,5 @@ public final class ShardingProxyClient {
                 pool.release(channels[i]);
             }
         }
-    }
-    
-    /**
-     * Get instance of sharding-proxy client.
-     *
-     * @return instance of sharding-proxy client
-     */
-    public static ShardingProxyClient getInstance() {
-        return INSTANCE;
     }
 }
