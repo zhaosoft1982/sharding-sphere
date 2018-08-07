@@ -1,5 +1,6 @@
 package io.shardingsphere.revert;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -120,11 +121,11 @@ public final class RevertEngine {
 				builder.append(" ").append(alias).append(" ");
 			}
 		}
-		
-		if(sqlPart.getUpdateConditionString() != null && !sqlPart.getUpdateConditionString().isEmpty()) {
+
+		if (sqlPart.getUpdateConditionString() != null && !sqlPart.getUpdateConditionString().isEmpty()) {
 			builder.append(" where ").append(sqlPart.getUpdateConditionString());
 		}
-		
+
 		context.setSelectSql(builder.toString());
 	}
 
@@ -149,8 +150,10 @@ public final class RevertEngine {
 
 	private void fillSelectResult(RevertContext context, SQLPartInfo sqlPart) throws SQLException {
 		PreparedStatement ps = null;
+		Connection conn = null;
 		try {
-			ps = ds.getConnection().prepareStatement(context.getSelectSql());
+			conn = ds.getConnection();
+			ps = conn.prepareStatement(context.getSelectSql());
 			if (context.getSelectParam() != null) {
 				for (int i = 0; i < context.getSelectParam().length; i++) {
 					ps.setObject(i + 1, context.getSelectParam()[i]);
@@ -168,9 +171,7 @@ public final class RevertEngine {
 				}
 			}
 		} finally {
-			if (ps != null) {
-				ps.close();
-			}
+			closePsAndConn(conn, ps); 
 		}
 	}
 
@@ -262,8 +263,10 @@ public final class RevertEngine {
 	public void revert() throws SQLException {
 		for (Collection<Object> rowParam : context.getRevertParam()) {
 			PreparedStatement ps = null;
+			Connection conn = null;
 			try {
-				ps = ds.getConnection().prepareStatement(context.getRevertSQL());
+				conn = ds.getConnection();
+				ps = conn.prepareStatement(context.getRevertSQL());
 				if (rowParam != null) {
 					Iterator<Object> it = rowParam.iterator();
 					int i = 0;
@@ -275,9 +278,25 @@ public final class RevertEngine {
 
 				ps.execute();
 			} finally {
-				if (ps != null) {
-					ps.close();
-				}
+				closePsAndConn(conn, ps); 
+			}
+		}
+	}
+
+	private void closePsAndConn(Connection conn, PreparedStatement ps) {
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+
+		if (conn != null) {
+			try {
+				conn.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
 			}
 		}
 	}
