@@ -112,10 +112,17 @@ public final class RevertEngine {
 					builder.replace(builder.length() - 1, builder.length() - 1, "");
 				}
 			}
-
 		}
+		
 		builder.append(" from ").append(sqlPart.getUpdateTable());
-		String alias = sqlPart.getTableAlias().get(sqlPart.getUpdateTable());
+		String alias = null;
+		for(Map.Entry<String, String> entry : sqlPart.getTableAlias().entrySet()) {
+			if(sqlPart.getUpdateTable().equals(entry.getValue())) {
+				alias = entry.getKey();
+				break;
+			}
+		}
+		
 		if (alias != null) {
 			if (!alias.equals(sqlPart.getUpdateTable())) {
 				builder.append(" ").append(alias).append(" ");
