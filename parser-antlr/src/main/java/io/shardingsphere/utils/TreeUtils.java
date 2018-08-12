@@ -9,12 +9,12 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 public class TreeUtils {
 	public static ParseTree getAncestorByClass(ParseTree node, Class<?> clazz) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
 		ParseTree parentNode = node.getParent();
-		while (parentNode != null) {
+		while (null != parentNode) {
 			if (isSameType(parentNode.getClass(), clazz)) {
 				return parentNode;
 			}
@@ -24,12 +24,12 @@ public class TreeUtils {
 	}
 
 	public static ParseTree getAncestorUtilToClass(ParseTree node, Class<?> clazz) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
 		ParseTree parent = node.getParent();
-		while (parent != null) {
+		while (null != parent) {
 			if (isSameType(parent.getClass(), clazz)) {
 				return parent;
 			}
@@ -40,11 +40,11 @@ public class TreeUtils {
 	}
 
 	public static ParseTree getFirstChildByClass(ParseTree node, Class<?> clazz) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
-		while (node != null) {
+		while (null != node) {
 			if (isSameType(node.getClass(), clazz)) {
 				return node;
 			}
@@ -55,7 +55,7 @@ public class TreeUtils {
 	}
 
 	public static List<ParserRuleContext> getChildByClass(ParseTree node, Class<?> clazz) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
@@ -73,7 +73,7 @@ public class TreeUtils {
 	}
 
 	public static List<ParseTree> getAllDescendantByClass(ParseTree node, Class<?> clazz) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
@@ -83,7 +83,7 @@ public class TreeUtils {
 		}
 
 		int count = node.getChildCount();
-		if (count == 0) {
+		if (0 == count) {
 			return childs;
 		}
 
@@ -106,7 +106,7 @@ public class TreeUtils {
 	public static List<ParseTree> getAllTopDescendantByClass(ParseTree node, Class<?> clazz) {
 		List<ParseTree> childs = new ArrayList<>();
 
-		if (node == null) {
+		if (null == node) {
 			return childs;
 		}
 
@@ -116,7 +116,7 @@ public class TreeUtils {
 		}
 
 		int count = node.getChildCount();
-		if (count == 0) {
+		if (0 == count) {
 			return childs;
 		}
 
@@ -129,7 +129,7 @@ public class TreeUtils {
 				childNodes.add(child);
 			}
 		}
-		
+
 		for (ParseTree child : childNodes) {
 			List<? extends ParseTree> retChilds = getAllTopDescendantByClass(child, clazz);
 			if (retChilds != null) {
@@ -141,7 +141,7 @@ public class TreeUtils {
 	}
 
 	public static ParseTree getFirstDescendant(ParseTree node, Class<?> type, boolean onlyChild) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
@@ -150,7 +150,7 @@ public class TreeUtils {
 		}
 
 		int count = node.getChildCount();
-		if (count == 0) {
+		if (0 == count) {
 			return null;
 		}
 
@@ -170,7 +170,7 @@ public class TreeUtils {
 		if (!onlyChild) {
 			for (ParseTree childNode : childNodes) {
 				ParseTree retNode = getFirstDescendant(childNode, type, onlyChild);
-				if (retNode != null) {
+				if (null != retNode) {
 					return retNode;
 				}
 			}
@@ -180,7 +180,7 @@ public class TreeUtils {
 	}
 
 	public static TerminalNode getFirstTerminalByType(ParseTree node, int type) {
-		if (node == null) {
+		if (null == node) {
 			return null;
 		}
 
@@ -194,7 +194,7 @@ public class TreeUtils {
 		}
 
 		int count = node.getChildCount();
-		if (count == 0) {
+		if (0 == count) {
 			return null;
 		}
 
@@ -214,7 +214,7 @@ public class TreeUtils {
 
 		for (ParseTree nonterminalNode : nonterminalChildNodes) {
 			TerminalNode retNode = getFirstTerminalByType(nonterminalNode, type);
-			if (retNode != null) {
+			if (null != retNode) {
 				return retNode;
 			}
 		}
@@ -224,7 +224,7 @@ public class TreeUtils {
 
 	public static List<TerminalNode> getAllTerminalByType(ParseTree node, int type) {
 		List<TerminalNode> retNodes = new ArrayList<>();
-		if (node == null) {
+		if (null == node) {
 			return retNodes;
 		}
 
@@ -238,7 +238,7 @@ public class TreeUtils {
 		}
 
 		int count = node.getChildCount();
-		if (count == 0) {
+		if (0 == count) {
 			return retNodes;
 		}
 

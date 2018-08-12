@@ -18,24 +18,30 @@ import io.shardingsphere.core.metadata.table.ColumnMetaData;
 import io.shardingsphere.core.metadata.table.TableMetaData;
 import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 import io.shardingsphere.revert.builder.factory.mysql.BuilderFactory;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-public final class RevertEngine {
-	private DataSource ds;
-	private String sql;
-	private Object[] params;
-	private Integer dbType;
-	private TableMetaData tableMeta;
+@RequiredArgsConstructor
+@Setter
+@Getter
+@ToString
+public final class SnapshotEngine {
+
+	private final DataSource ds;
+
+	private final String sql;
+
+	private final Object[] params;
+
+	private final Integer dbType;
+
+	private final TableMetaData tableMeta;
+
 	private List<String> keys;
-	private RevertContext context;
 
-	public RevertEngine(DataSource ds, String sql, Object[] params, Integer dbType, TableMetaData tableMeta) {
-		this.ds = ds;
-		this.sql = sql;
-		this.params = params;
-		this.dbType = dbType;
-		this.tableMeta = tableMeta;
-		getKeyColumns();
-	}
+	private RevertContext context;
 
 	private void getKeyColumns() {
 		keys = new ArrayList<>();
@@ -47,8 +53,12 @@ public final class RevertEngine {
 	}
 
 	public RevertContext snapshot() throws SQLException {
+		if (null == keys) {
+			getKeyColumns();
+		}
+
 		BuilderFactory factory = BuilderFactoryProducer.getBuilderFactory(dbType);
-		if (factory == null) {
+		if (null == factory) {
 			throw new RuntimeException("invalid db type");
 		}
 
@@ -58,9 +68,7 @@ public final class RevertEngine {
 	}
 
 	private void generateConext(SQLPartInfo sqlPart) throws SQLException {
-		context = new RevertContext();
-		context.setOriginSQL(sql);
-		context.setOriginParams(params);
+		context = new RevertContext(sql, params);
 		if (DMLType.DELETE == sqlPart.getType() || DMLType.UPDATE == sqlPart.getType()) {
 			fillSelectSql(context, sqlPart);
 			fillSelectParam(context, sqlPart);
@@ -113,16 +121,16 @@ public final class RevertEngine {
 				}
 			}
 		}
-		
+
 		builder.append(" from ").append(sqlPart.getUpdateTable());
 		String alias = null;
-		for(Map.Entry<String, String> entry : sqlPart.getTableAlias().entrySet()) {
-			if(sqlPart.getUpdateTable().equals(entry.getValue())) {
-				alias = entry.getKey();
+		for (Map.Entry<String, String> each : sqlPart.getTableAlias().entrySet()) {
+			if (sqlPart.getUpdateTable().equals(each.getValue())) {
+				alias = each.getKey();
 				break;
 			}
 		}
-		
+
 		if (alias != null) {
 			if (!alias.equals(sqlPart.getUpdateTable())) {
 				builder.append(" ").append(alias).append(" ");
@@ -133,7 +141,7 @@ public final class RevertEngine {
 			builder.append(" where ").append(sqlPart.getUpdateConditionString());
 		}
 
-		context.setSelectSql(builder.toString());
+		context.setSelectSQL(builder.toString());
 	}
 
 	private void fillSelectParam(RevertContext context, SQLPartInfo sqlPart) throws SQLException {
@@ -160,7 +168,7 @@ public final class RevertEngine {
 		Connection conn = null;
 		try {
 			conn = ds.getConnection();
-			ps = conn.prepareStatement(context.getSelectSql());
+			ps = conn.prepareStatement(context.getSelectSQL());
 			if (context.getSelectParam() != null) {
 				for (int i = 0; i < context.getSelectParam().length; i++) {
 					ps.setObject(i + 1, context.getSelectParam()[i]);
@@ -178,7 +186,7 @@ public final class RevertEngine {
 				}
 			}
 		} finally {
-			closePsAndConn(conn, ps); 
+			closePsAndConn(conn, ps);
 		}
 	}
 
@@ -286,7 +294,7 @@ public final class RevertEngine {
 
 				ps.execute();
 			} finally {
-				closePsAndConn(conn, ps); 
+				closePsAndConn(conn, ps);
 			}
 		}
 	}

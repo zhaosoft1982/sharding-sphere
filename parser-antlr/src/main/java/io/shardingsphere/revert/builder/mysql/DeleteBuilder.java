@@ -8,7 +8,7 @@ import io.shardingsphere.revert.builder.AbstractSQLPartBuilder;
 import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 import io.shardingsphere.utils.TreeUtils;
 
-public class DeleteBuilder extends AbstractSQLPartBuilder {
+public final class DeleteBuilder extends AbstractSQLPartBuilder {
 	public DeleteBuilder() {
 		this.type = DMLType.DELETE;
 	}
@@ -23,7 +23,7 @@ public class DeleteBuilder extends AbstractSQLPartBuilder {
 	private String getTableFromSingle(ParserRuleContext root) {
 		FromSingleContext singleCtx = (FromSingleContext) TreeUtils.getFirstDescendant(root, FromSingleContext.class,
 				false);
-		if (singleCtx != null) {
+		if (null != singleCtx) {
 			if (singleCtx.getChildCount() > 1) {
 				return singleCtx.getChild(1).getText();
 			}

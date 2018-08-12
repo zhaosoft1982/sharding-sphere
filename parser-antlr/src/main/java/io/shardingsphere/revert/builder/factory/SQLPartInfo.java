@@ -7,19 +7,27 @@ import java.util.Map;
 
 import io.shardingsphere.revert.DMLType;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+@RequiredArgsConstructor
 @Setter
 @Getter
 @ToString
-public class SQLPartInfo {
-	private DMLType type;
-	private String sql;
+public final class SQLPartInfo {
+	private final DMLType type;
+	
+	private final String sql;
+	
 	private List<String> updateColumns = new ArrayList<>();
+	
 	private String updateTable;
+	
 	private Map<String, String> tableAlias = new HashMap<>();
+	
 	private String updateConditionString;
+	
 	private List<Integer> whereParamIndexRange = new ArrayList<>();
 
 }

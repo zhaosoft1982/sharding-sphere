@@ -6,19 +6,27 @@ import java.util.List;
 import java.util.Map;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+@RequiredArgsConstructor
 @Setter
 @Getter
 @ToString
-public class RevertContext {
-	private String originSQL;
-	private Object[] originParams;
-	private String selectSql;
-	private List<Map<String,Object>> selectResult = new ArrayList<>();
+public final class RevertContext {
+	
+	private final String originSQL;
+	
+	private final Object[] originParams;
+	
+	private String selectSQL;
+	
+	private final List<Map<String,Object>> selectResult = new ArrayList<>();
+	
 	private Object[] selectParam;
+	
 	private String revertSQL;
-	private List<Collection<Object>> revertParam = new ArrayList<>();
-
+	
+	private final List<Collection<Object>> revertParam = new ArrayList<>();
 }

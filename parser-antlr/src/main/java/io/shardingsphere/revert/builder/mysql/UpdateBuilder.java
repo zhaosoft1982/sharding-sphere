@@ -16,7 +16,7 @@ import io.shardingsphere.revert.builder.AbstractSQLPartBuilder;
 import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 import io.shardingsphere.utils.TreeUtils;
 
-public class UpdateBuilder extends AbstractSQLPartBuilder {
+public final class UpdateBuilder extends AbstractSQLPartBuilder {
 	public UpdateBuilder() {
 		this.type = DMLType.UPDATE;
 	}
@@ -36,7 +36,7 @@ public class UpdateBuilder extends AbstractSQLPartBuilder {
 	public void buildTableAlias(SQLPartInfo sqlPart, ParserRuleContext root) {
 		TableReferencesContext tableReferencesCtx = (TableReferencesContext) TreeUtils.getFirstDescendant(root,
 				TableReferencesContext.class, false);
-		if (tableReferencesCtx != null) {
+		if (null != tableReferencesCtx) {
 			List<ParseTree> tableFactorCtxs = TreeUtils.getAllDescendantByClass(tableReferencesCtx,
 					TableFactorContext.class);
 			for (ParseTree each : tableFactorCtxs) {
@@ -46,7 +46,7 @@ public class UpdateBuilder extends AbstractSQLPartBuilder {
 				AliasContext aliasCtx = (AliasContext) TreeUtils.getFirstDescendant(each, AliasContext.class, false);
 				String tableName = tableNameCtx.getText();
 				String alias = tableName;
-				if (aliasCtx != null) {
+				if (null != aliasCtx) {
 					alias = aliasCtx.getText();
 				}
 
@@ -63,5 +63,4 @@ public class UpdateBuilder extends AbstractSQLPartBuilder {
 			}
 		}
 	}
-
 }

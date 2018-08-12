@@ -10,13 +10,13 @@ import io.shardingsphere.parser.antlr.mysql.MySQLDMLParser.WhereClauseContext;
 import io.shardingsphere.revert.DMLType;
 import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 import io.shardingsphere.utils.TreeUtils;
-
+import lombok.Getter;
+@Getter
 public class AbstractSQLPartBuilder implements SQLPartBuilder {
 	protected DMLType type;
 
 	@Override
 	public void build(SQLPartInfo sqlPart, ParserRuleContext root) {
-		sqlPart.setType(type);
 		buildUpdateColumns(sqlPart, root);
 		buildUpdateTables(sqlPart, root);
 		buildTableAlias(sqlPart, root);
@@ -55,7 +55,7 @@ public class AbstractSQLPartBuilder implements SQLPartBuilder {
 		WhereClauseContext where = (WhereClauseContext) TreeUtils.getFirstDescendant(root, WhereClauseContext.class,
 				false);
 
-		if (where != null) {
+		if (null != where) {
 			ParserRuleContext exprCtx = (ParserRuleContext) where.getChild(1);
 			String expr = sqlPart.getSql().substring(exprCtx.getStart().getStartIndex(),
 					exprCtx.getStop().getStopIndex() + 1);
@@ -73,8 +73,6 @@ public class AbstractSQLPartBuilder implements SQLPartBuilder {
 
 			sqlPart.getWhereParamIndexRange().add(paramCount - whereParamCount);
 			sqlPart.getWhereParamIndexRange().add(paramCount);
-
 		}
 	}
-
 }

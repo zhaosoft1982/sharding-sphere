@@ -19,16 +19,11 @@ public abstract class AbstractBuilderFactory implements BuilderFactory {
 	 */
 	protected abstract SQLPartBuilder getBuilder(ParserRuleContext root);
 
-	/* (non-Javadoc)
-	 * @see io.shardingsphere.revert.builder.factory.mysql.BuilderFactory#build(java.lang.String)
-	 */
 	@Override
 	public final SQLPartInfo build(String sql) {
 		ParserRuleContext root = getRoot(sql);
-
-		SQLPartInfo sqlPart = new SQLPartInfo();
-		sqlPart.setSql(sql);
 		SQLPartBuilder builder = getBuilder(root);
+		SQLPartInfo sqlPart = new SQLPartInfo(builder.getType(), sql);
 		builder.build(sqlPart, root);
 		return sqlPart;
 	}

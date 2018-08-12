@@ -6,7 +6,7 @@ import io.shardingsphere.revert.DMLType;
 import io.shardingsphere.revert.builder.AbstractSQLPartBuilder;
 import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 
-public class InsertBuilder extends AbstractSQLPartBuilder {
+public final class InsertBuilder extends AbstractSQLPartBuilder {
 	public InsertBuilder() {
 		this.type = DMLType.INSERT;
 	}
