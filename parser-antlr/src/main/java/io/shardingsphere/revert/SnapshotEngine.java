@@ -57,7 +57,7 @@ public final class SnapshotEngine {
 			getKeyColumns();
 		}
 
-		BuilderFactory factory = BuilderFactoryProducer.getBuilderFactory(dbType);
+		BuilderFactory factory = BuilderFactoryCreater.getBuilderFactory(dbType);
 		if (null == factory) {
 			throw new RuntimeException("invalid db type");
 		}
