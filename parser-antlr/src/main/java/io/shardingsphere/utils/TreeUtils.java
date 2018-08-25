@@ -1,3 +1,20 @@
+/*
+ * Copyright 2016-2018 shardingsphere.io.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * </p>
+ */
+
 package io.shardingsphere.utils;
 
 import java.util.ArrayList;
@@ -8,273 +25,382 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 public class TreeUtils {
-	public static ParseTree getAncestorByClass(ParseTree node, Class<?> clazz) {
-		if (null == node) {
-			return null;
-		}
+    public static final String RULE_SUFFIX = "Context";
 
-		ParseTree parentNode = node.getParent();
-		while (null != parentNode) {
-			if (isSameType(parentNode.getClass(), clazz)) {
-				return parentNode;
-			}
-			parentNode = parentNode.getParent();
-		}
-		return null;
-	}
+    /**Find ancestor node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param clazz return node class
+     * @return match node
+     */
+    public static ParseTree getAncestorByClass(final ParseTree node, final Class<?> clazz) {
+        if (null == node) {
+            return null;
+        }
 
-	public static ParseTree getAncestorUtilToClass(ParseTree node, Class<?> clazz) {
-		if (null == node) {
-			return null;
-		}
+        ParseTree parentNode = node.getParent();
+        while (null != parentNode) {
+            if (isCompatible(parentNode.getClass(), clazz)) {
+                return parentNode;
+            }
+            parentNode = parentNode.getParent();
+        }
+        return null;
+    }
 
-		ParseTree parent = node.getParent();
-		while (null != parent) {
-			if (isSameType(parent.getClass(), clazz)) {
-				return parent;
-			}
-			parent = parent.getParent();
-		}
+    /**Find first child node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param clazz return node class
+     * @return match node
+     */
+    public static ParseTree getFirstChildByClass(final ParseTree node, final Class<?> clazz) {
+        if (null == node) {
+            return null;
+        }
 
-		return null;
-	}
+        for (int i = 0; i < node.getChildCount(); i++) {
+            ParseTree child = node.getChild(i);
+            ParseTree retNode = getFirstChildByClass(child, clazz);
+            if (null != retNode) {
+                return retNode;
+            }
+        }
 
-	public static ParseTree getFirstChildByClass(ParseTree node, Class<?> clazz) {
-		if (null == node) {
-			return null;
-		}
+        return null;
+    }
 
-		while (null != node) {
-			if (isSameType(node.getClass(), clazz)) {
-				return node;
-			}
-			node = node.getChild(0);
-		}
+    /**Find first child node whose rule name is ${name}.
+     * 
+     * @param node start node
+     * @param name rule name
+     * @return match node
+     */
+    public static ParseTree getFirstChildByRuleName(final ParseTree node, final String name) {
+        if (null == node) {
+            return null;
+        }
 
-		return null;
-	}
+        String ruleName = name;
+        if (name.indexOf(RULE_SUFFIX) < 0) {
+            ruleName = Character.toUpperCase(name.charAt(0)) + name.substring(1) + RULE_SUFFIX;
+        }
 
-	public static List<ParserRuleContext> getChildByClass(ParseTree node, Class<?> clazz) {
-		if (null == node) {
-			return null;
-		}
+        if (ruleName.equals(node.getClass().getSimpleName())) {
+            return node;
+        }
 
-		List<ParserRuleContext> childs = new ArrayList<>();
-		for (int i = 0; i < node.getChildCount(); i++) {
-			ParseTree child = node.getChild(i);
-			if (isSameType(child.getClass(), clazz)) {
-				if (child instanceof ParserRuleContext) {
-					childs.add((ParserRuleContext) child);
-				}
-			}
-		}
+        for (int i = 0; i < node.getChildCount(); i++) {
+            ParseTree child = node.getChild(i);
+            ParseTree retNode = getFirstChildByRuleName(child, name);
+            if (null != retNode) {
+                return retNode;
+            }
+        }
 
-		return childs;
-	}
+        return null;
+    }
 
-	public static List<ParseTree> getAllDescendantByClass(ParseTree node, Class<?> clazz) {
-		if (null == node) {
-			return null;
-		}
+    /**Find all children node whose rule name is ${name}.
+     * 
+     * @param node start node
+     * @param name rule name
+     * @return match nodes
+     */
+    public static List<ParseTree> getAllDescendantByRuleName(final ParseTree node, final String name) {
+        if (null == node) {
+            return null;
+        }
 
-		List<ParseTree> childs = new ArrayList<>();
-		if (isSameType(node.getClass(), clazz)) {
-			childs.add(node);
-		}
+        String ruleName = name;
+        if (name.indexOf(RULE_SUFFIX) < 0) {
+            ruleName = Character.toUpperCase(name.charAt(0)) + name.substring(1) + RULE_SUFFIX;
+        }
 
-		int count = node.getChildCount();
-		if (0 == count) {
-			return childs;
-		}
+        List<ParseTree> childs = new ArrayList<>();
+        if (ruleName.equals(node.getClass().getSimpleName())) {
+            childs.add(node);
+        }
 
-		List<ParseTree> childNodes = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
-			ParseTree child = node.getChild(i);
-			childNodes.add(child);
-		}
+        int count = node.getChildCount();
+        if (0 == count) {
+            return childs;
+        }
 
-		for (ParseTree child : childNodes) {
-			List<ParseTree> retChilds = getAllDescendantByClass(child, clazz);
-			if (retChilds != null) {
-				childs.addAll(retChilds);
-			}
-		}
+        List<ParseTree> childNodes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
+            childNodes.add(child);
+        }
 
-		return childs;
-	}
+        for (final ParseTree child : childNodes) {
+            List<ParseTree> retChilds = getAllDescendantByRuleName(child, name);
+            if (retChilds != null) {
+                childs.addAll(retChilds);
+            }
+        }
 
-	public static List<ParseTree> getAllTopDescendantByClass(ParseTree node, Class<?> clazz) {
-		List<ParseTree> childs = new ArrayList<>();
+        return childs;
+    }
 
-		if (null == node) {
-			return childs;
-		}
+    /**Find all children node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param clazz return node class
+     * @return match nodes
+     */
+    public static List<ParserRuleContext> getChildByClass(final ParseTree node, final Class<?> clazz) {
+        if (null == node) {
+            return null;
+        }
 
-		if (isSameType(node.getClass(), clazz)) {
-			childs.add(node);
-			return childs;
-		}
+        List<ParserRuleContext> childs = new ArrayList<>();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            ParseTree child = node.getChild(i);
+            if (!isCompatible(child.getClass(), clazz)) {
+                continue;
+            }
+            
+            if (child instanceof ParserRuleContext) {
+                childs.add((ParserRuleContext) child);
+            }
+        }
 
-		int count = node.getChildCount();
-		if (0 == count) {
-			return childs;
-		}
+        return childs;
+    }
 
-		List<ParseTree> childNodes = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
-			ParseTree child = node.getChild(i);
-			if (isSameType(child.getClass(), clazz)) {
-				childs.add(child);
-			} else {
-				childNodes.add(child);
-			}
-		}
+    /**Find all children node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param clazz return node class
+     * @return match nodes
+     */
+    public static List<ParseTree> getAllDescendantByClass(final ParseTree node, final Class<?> clazz) {
+        if (null == node) {
+            return null;
+        }
 
-		for (ParseTree child : childNodes) {
-			List<? extends ParseTree> retChilds = getAllTopDescendantByClass(child, clazz);
-			if (retChilds != null) {
-				childs.addAll(retChilds);
-			}
-		}
+        List<ParseTree> childs = new ArrayList<>();
+        if (isCompatible(node.getClass(), clazz)) {
+            childs.add(node);
+        }
 
-		return childs;
-	}
+        int count = node.getChildCount();
+        if (0 == count) {
+            return childs;
+        }
 
-	public static ParseTree getFirstDescendant(ParseTree node, Class<?> type, boolean onlyChild) {
-		if (null == node) {
-			return null;
-		}
+        List<ParseTree> childNodes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
+            childNodes.add(child);
+        }
 
-		if (isSameType(node.getClass(), type)) {
-			return node;
-		}
+        for (final ParseTree child : childNodes) {
+            List<ParseTree> retChilds = getAllDescendantByClass(child, clazz);
+            if (retChilds != null) {
+                childs.addAll(retChilds);
+            }
+        }
 
-		int count = node.getChildCount();
-		if (0 == count) {
-			return null;
-		}
+        return childs;
+    }
 
-		List<ParseTree> childNodes = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
-			ParseTree child = node.getChild(i);
+    /**Find all top level children node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param clazz return node class
+     * @return match nodes
+     */
+    public static List<ParseTree> getAllTopDescendantByClass(final ParseTree node, final Class<?> clazz) {
+        List<ParseTree> childs = new ArrayList<>();
 
-			if (isSameType(child.getClass(), type)) {
-				return child;
-			}
+        if (null == node) {
+            return childs;
+        }
 
-			if (!onlyChild) {
-				childNodes.add(child);
-			}
-		}
+        if (isCompatible(node.getClass(), clazz)) {
+            childs.add(node);
+            return childs;
+        }
 
-		if (!onlyChild) {
-			for (ParseTree childNode : childNodes) {
-				ParseTree retNode = getFirstDescendant(childNode, type, onlyChild);
-				if (null != retNode) {
-					return retNode;
-				}
-			}
-		}
+        int count = node.getChildCount();
+        if (0 == count) {
+            return childs;
+        }
 
-		return null;
-	}
+        List<ParseTree> childNodes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
+            if (isCompatible(child.getClass(), clazz)) {
+                childs.add(child);
+            } else {
+                childNodes.add(child);
+            }
+        }
 
-	public static TerminalNode getFirstTerminalByType(ParseTree node, int type) {
-		if (null == node) {
-			return null;
-		}
+        for (final ParseTree child : childNodes) {
+            List<? extends ParseTree> retChilds = getAllTopDescendantByClass(child, clazz);
+            if (retChilds != null) {
+                childs.addAll(retChilds);
+            }
+        }
 
-		if (node instanceof TerminalNode) {
-			TerminalNode terminal = (TerminalNode) node;
-			if (terminal.getSymbol().getType() == type) {
-				return terminal;
-			} else {
-				return null;
-			}
-		}
+        return childs;
+    }
 
-		int count = node.getChildCount();
-		if (0 == count) {
-			return null;
-		}
+    /**Find first children node whose class is ${clazz}.
+     * 
+     * @param node start node
+     * @param type return node class
+     * @param onlyChild  true only find child node, false find all descendant node
+     * @return match node
+     */
+    public static ParseTree getFirstDescendant(final ParseTree node, final Class<?> type, final boolean onlyChild) {
+        if (null == node) {
+            return null;
+        }
 
-		List<ParseTree> nonterminalChildNodes = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
-			ParseTree child = node.getChild(i);
+        if (isCompatible(node.getClass(), type)) {
+            return node;
+        }
 
-			if (child instanceof TerminalNode) {
-				TerminalNode terminal = (TerminalNode) child;
-				if (terminal.getSymbol().getType() == type) {
-					return terminal;
-				}
-			} else {
-				nonterminalChildNodes.add(child);
-			}
-		}
+        int count = node.getChildCount();
+        if (0 == count) {
+            return null;
+        }
 
-		for (ParseTree nonterminalNode : nonterminalChildNodes) {
-			TerminalNode retNode = getFirstTerminalByType(nonterminalNode, type);
-			if (null != retNode) {
-				return retNode;
-			}
-		}
+        List<ParseTree> childNodes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
 
-		return null;
-	}
+            if (isCompatible(child.getClass(), type)) {
+                return child;
+            }
 
-	public static List<TerminalNode> getAllTerminalByType(ParseTree node, int type) {
-		List<TerminalNode> retNodes = new ArrayList<>();
-		if (null == node) {
-			return retNodes;
-		}
+            if (!onlyChild) {
+                childNodes.add(child);
+            }
+        }
 
-		if (node instanceof TerminalNode) {
-			TerminalNode terminal = (TerminalNode) node;
-			if (terminal.getSymbol().getType() == type) {
-				retNodes.add(terminal);
-			} else {
-				return retNodes;
-			}
-		}
+        if (!onlyChild) {
+            for (final ParseTree childNode : childNodes) {
+                ParseTree retNode = getFirstDescendant(childNode, type, onlyChild);
+                if (null != retNode) {
+                    return retNode;
+                }
+            }
+        }
 
-		int count = node.getChildCount();
-		if (0 == count) {
-			return retNodes;
-		}
+        return null;
+    }
 
-		List<ParseTree> nonTerminalChilds = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
-			ParseTree child = node.getChild(i);
+    /**Find first descendant node whose type is ${type}.
+     * 
+     * @param node start node
+     * @param type terminal node type
+     * @return match node
+     */
+    public static TerminalNode getFirstTerminalByType(final ParseTree node, final int type) {
+        if (null == node) {
+            return null;
+        }
 
-			// if("?".equals(child.getText())) {
-			// if(child.getClass() == LiterContext.class) {
-			// System.out.println(1);
-			// }
-			// }
-			if (child instanceof TerminalNode) {
-				TerminalNode terminal = (TerminalNode) child;
-				// System.out.println(terminal.getText()+"===="
-				// +terminal.getSymbol().getType());
-				if (terminal.getSymbol().getType() == type) {
-					retNodes.add(terminal);
-				}
-			} else {
-				nonTerminalChilds.add(child);
-			}
-		}
+        if (node instanceof TerminalNode) {
+            TerminalNode terminal = (TerminalNode) node;
+            if (terminal.getSymbol().getType() == type) {
+                return terminal;
+            } else {
+                return null;
+            }
+        }
 
-		int childCount = nonTerminalChilds.size();
-		for (int j = 0; j < childCount; j++) {
-			List<TerminalNode> childRetNodes = getAllTerminalByType(nonTerminalChilds.get(j), type);
-			if (childRetNodes != null) {
-				retNodes.addAll(childRetNodes);
-			}
-		}
+        int count = node.getChildCount();
+        if (0 == count) {
+            return null;
+        }
 
-		return retNodes;
-	}
+        List<ParseTree> nonterminalChildNodes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
 
-	public static boolean isSameType(Class<?> c1, Class<?> c2) {
-		return c1 == c2 || c2.isAssignableFrom(c1);
-	}
+            if (child instanceof TerminalNode) {
+                TerminalNode terminal = (TerminalNode) child;
+                if (terminal.getSymbol().getType() == type) {
+                    return terminal;
+                }
+            } else {
+                nonterminalChildNodes.add(child);
+            }
+        }
+
+        for (final ParseTree nonterminalNode : nonterminalChildNodes) {
+            TerminalNode retNode = getFirstTerminalByType(nonterminalNode, type);
+            if (null != retNode) {
+                return retNode;
+            }
+        }
+
+        return null;
+    }
+
+    /**Find descendant nodes whose type is ${type}.
+     * 
+     * @param node start node
+     * @param type terminal node type
+     * @return match nodes
+     */
+    public static List<TerminalNode> getAllTerminalByType(final ParseTree node, final int type) {
+        List<TerminalNode> retNodes = new ArrayList<>();
+        if (null == node) {
+            return retNodes;
+        }
+
+        if (node instanceof TerminalNode) {
+            TerminalNode terminal = (TerminalNode) node;
+            if (terminal.getSymbol().getType() == type) {
+                retNodes.add(terminal);
+            } else {
+                return retNodes;
+            }
+        }
+
+        int count = node.getChildCount();
+        if (0 == count) {
+            return retNodes;
+        }
+
+        List<ParseTree> nonTerminalChilds = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ParseTree child = node.getChild(i);
+            if (child instanceof TerminalNode) {
+                TerminalNode terminal = (TerminalNode) child;
+                if (terminal.getSymbol().getType() == type) {
+                    retNodes.add(terminal);
+                }
+            } else {
+                nonTerminalChilds.add(child);
+            }
+        }
+
+        int childCount = nonTerminalChilds.size();
+        for (int j = 0; j < childCount; j++) {
+            List<TerminalNode> childRetNodes = getAllTerminalByType(nonTerminalChilds.get(j), type);
+            if (childRetNodes != null) {
+                retNodes.addAll(childRetNodes);
+            }
+        }
+
+        return retNodes;
+    }
+
+    /**Determine whether the two class is compatible.
+     * 
+     * @param c1 first param
+     * @param c2 second param
+     * @return true is compatible
+     */
+    public static boolean isCompatible(final Class<?> c1, final Class<?> c2) {
+        return c1 == c2 || c2.isAssignableFrom(c1);
+    }
 }

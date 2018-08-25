@@ -1,3 +1,20 @@
+/*
+ * Copyright 2016-2018 shardingsphere.io.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * </p>
+ */
+
 package io.shardingsphere.revert;
 
 import java.sql.Connection;
@@ -29,291 +46,389 @@ import lombok.ToString;
 @ToString
 public final class SnapshotEngine {
 
-	private final DataSource ds;
+    private final DataSource ds;
 
-	private final String sql;
+    private final String sql;
 
-	private final Object[] params;
+    private final Object[] params;
 
-	private final Integer dbType;
+    private final Integer dbType;
 
-	private final TableMetaData tableMeta;
+    private final TableMetaData tableMeta;
 
-	private List<String> keys;
+    private List<String> keys;
 
-	private RevertContext context;
+    private RevertContext context;
 
-	private void getKeyColumns() {
-		keys = new ArrayList<>();
-		for (ColumnMetaData each : tableMeta.getColumnMetaData()) {
-			if (each.isPrimaryKey()) {
-				keys.add(each.getColumnName());
-			}
-		}
-	}
+    /**Get table key columns.
+     * 
+     */
+    private void getKeyColumns() {
+        keys = new ArrayList<>();
+        for (ColumnMetaData each : tableMeta.getColumnMetaData()) {
+            if (each.isPrimaryKey()) {
+                keys.add(each.getColumnName());
+            }
+        }
+    }
 
-	public RevertContext snapshot() throws SQLException {
-		if (null == keys) {
-			getKeyColumns();
-		}
+    /**Generate snapshot before sql execution.
+     * 
+     * @return Revert context info 
+     * @throws SQLException failed to execute sql throw exception
+     */
+    public RevertContext snapshot() throws SQLException {
+        if (null == keys) {
+            getKeyColumns();
+        }
 
-		BuilderFactory factory = BuilderFactoryCreater.getBuilderFactory(dbType);
-		if (null == factory) {
-			throw new RuntimeException("invalid db type");
-		}
+        BuilderFactory factory = BuilderFactoryCreater.getBuilderFactory(dbType);
+        if (null == factory) {
+            throw new RuntimeException("invalid db type");
+        }
 
-		SQLPartInfo sqlPart = factory.build(sql);
-		generateConext(sqlPart);
-		return context;
-	}
+        SQLPartInfo sqlPart = factory.build(sql);
+        generateConext(sqlPart);
+        return context;
+    }
 
-	private void generateConext(SQLPartInfo sqlPart) throws SQLException {
-		context = new RevertContext(sql, params);
-		if (DMLType.DELETE == sqlPart.getType() || DMLType.UPDATE == sqlPart.getType()) {
-			fillSelectSql(context, sqlPart);
-			fillSelectParam(context, sqlPart);
-			fillSelectResult(context, sqlPart);
-		}
+    /**Generate revert context.
+     * 
+     * @param sqlPart origin sql parts
+     * @return Revert context info 
+     * @throws SQLException failed to execute sql throw exception
+     */
+    private void generateConext(final SQLPartInfo sqlPart) throws SQLException {
+        context = new RevertContext(sql, params);
+        if (DMLType.DELETE == sqlPart.getType() || DMLType.UPDATE == sqlPart.getType()) {
+            fillSelectSql(context, sqlPart);
+            fillSelectParam(context, sqlPart);
+            fillSelectResult(context, sqlPart);
+        }
 
-		fillRevertSql(context, sqlPart);
-	}
+        fillRevertSql(context, sqlPart);
+    }
 
-	private void fillSelectSql(RevertContext context, SQLPartInfo sqlPart) {
-		StringBuilder builder = new StringBuilder();
+    /**Get and fill select sql.
+     * 
+     * @param context revert context info
+     * @param sqlPart origin sql parts
+     */
+    private void fillSelectSql(final RevertContext context, final SQLPartInfo sqlPart) {
+        StringBuilder builder = new StringBuilder();
 
-		if (DMLType.DELETE != sqlPart.getType() && DMLType.UPDATE != sqlPart.getType()) {
-			throw new RuntimeException("invalid DML operation");
-		}
+        if (DMLType.DELETE != sqlPart.getType() && DMLType.UPDATE != sqlPart.getType()) {
+            throw new RuntimeException("invalid DML operation");
+        }
 
-		builder.append("select  ");
-		if (DMLType.DELETE == sqlPart.getType()) {
-			builder.append(" * ");
-		} else if (DMLType.UPDATE == sqlPart.getType()) {
-			for (String each : sqlPart.getUpdateColumns()) {
-				int dotPos = each.indexOf('.');
-				String realColumnName = null;
-				if (dotPos > 0) {
-					realColumnName = each.substring(dotPos + 1);
-				} else {
-					realColumnName = each;
-				}
+        builder.append("select  ");
+        if (DMLType.DELETE == sqlPart.getType()) {
+            builder.append(" * ");
+        } else if (DMLType.UPDATE == sqlPart.getType()) {
+            fillColumnForUpdate(builder, sqlPart);
+        }
 
-				if (!keys.contains(realColumnName)) {
-					builder.append(each);
-					builder.append(",");
-				}
-			}
+        builder.append(" from ").append(sqlPart.getUpdateTable());
+        
+        String alias = getTableAlias(sqlPart);
 
-			int pos = 0;
-			for (String each : keys) {
-				builder.append(each);
-				if (pos < keys.size() - 1) {
-					builder.append(",");
-				}
+        if (alias != null && !alias.equals(sqlPart.getUpdateTable())) {
+            builder.append(" ").append(alias).append(" ");
+        }
 
-				pos++;
-			}
+        if (sqlPart.getUpdateConditionString() != null && !sqlPart.getUpdateConditionString().isEmpty()) {
+            builder.append(" where ").append(sqlPart.getUpdateConditionString());
+        }
 
-			if (keys.isEmpty()) {
-				char lastChar = builder.charAt(builder.length() - 1);
-				if (lastChar == ',') {
-					builder.replace(builder.length() - 1, builder.length() - 1, "");
-				}
-			}
-		}
+        context.setSelectSQL(builder.toString());
+    }
+    
+    /**Get table alias.
+     * 
+     * @param sqlPart origin sql parts
+     * @return table alias
+     */
+    private String getTableAlias(final SQLPartInfo sqlPart) {
+        for (Map.Entry<String, String> each : sqlPart.getTableAlias().entrySet()) {
+            if (sqlPart.getUpdateTable().equals(each.getValue())) {
+                return each.getKey();
+            }
+        }
+        return null;
+    }
+    
+    /**Append select column for update.
+     * 
+     * @param builder select sql builder
+     * @param sqlPart origin sql parts
+     */
+    private void fillColumnForUpdate(final StringBuilder builder, final SQLPartInfo sqlPart) {
+        for (String each : sqlPart.getUpdateColumns()) {
+            int dotPos = each.indexOf('.');
+            String realColumnName = null;
+            if (dotPos > 0) {
+                realColumnName = each.substring(dotPos + 1);
+            } else {
+                realColumnName = each;
+            }
 
-		builder.append(" from ").append(sqlPart.getUpdateTable());
-		String alias = null;
-		for (Map.Entry<String, String> each : sqlPart.getTableAlias().entrySet()) {
-			if (sqlPart.getUpdateTable().equals(each.getValue())) {
-				alias = each.getKey();
-				break;
-			}
-		}
+            if (!keys.contains(realColumnName)) {
+                builder.append(each);
+                builder.append(",");
+            }
+        }
 
-		if (alias != null) {
-			if (!alias.equals(sqlPart.getUpdateTable())) {
-				builder.append(" ").append(alias).append(" ");
-			}
-		}
+        int pos = 0;
+        for (String each : keys) {
+            builder.append(each);
+            if (pos < keys.size() - 1) {
+                builder.append(",");
+            }
 
-		if (sqlPart.getUpdateConditionString() != null && !sqlPart.getUpdateConditionString().isEmpty()) {
-			builder.append(" where ").append(sqlPart.getUpdateConditionString());
-		}
+            pos++;
+        }
 
-		context.setSelectSQL(builder.toString());
-	}
+        if (keys.isEmpty()) {
+            char lastChar = builder.charAt(builder.length() - 1);
+            if (lastChar == ',') {
+                builder.replace(builder.length() - 1, builder.length() - 1, "");
+            }
+        }
+    }
 
-	private void fillSelectParam(RevertContext context, SQLPartInfo sqlPart) throws SQLException {
-		if (null != context.getOriginParams() && context.getOriginParams().length > 0) {
-			if (sqlPart.getWhereParamIndexRange().size() > 0) {
-				int start = sqlPart.getWhereParamIndexRange().get(0);
-				int end = context.getOriginParams().length - 1;
-				if (sqlPart.getWhereParamIndexRange().size() > 1) {
-					end = sqlPart.getWhereParamIndexRange().get(1);
-				}
+    /**Get and fill select sql param.
+     * 
+     * @param context revert context info
+     * @param sqlPart origin sql parts
+     * @throws SQLException failed to execute sql throw exception
+     */
+    private void fillSelectParam(final RevertContext context, final SQLPartInfo sqlPart) throws SQLException {
+        if (null == context.getOriginParams() || context.getOriginParams().length <= 0) {
+            return;
+        }
+        
+        if (sqlPart.getWhereParamIndexRange().isEmpty()) {
+            return;
+        }
+        
+        int start = sqlPart.getWhereParamIndexRange().get(0);
+        int end = context.getOriginParams().length - 1;
+        if (sqlPart.getWhereParamIndexRange().size() > 1) {
+            end = sqlPart.getWhereParamIndexRange().get(1);
+        }
 
-				Object[] selectParam = new Object[end - start];
-				int pos = 0;
-				for (int i = start; i < end; i++) {
-					selectParam[pos++] = context.getOriginParams()[i];
-				}
-				context.setSelectParam(selectParam);
-			}
-		}
-	}
+        Object[] selectParam = new Object[end - start];
+        int pos = 0;
+        for (int i = start; i < end; i++) {
+            selectParam[pos++] = context.getOriginParams()[i];
+        }
+        context.setSelectParam(selectParam);
+    }
 
-	private void fillSelectResult(RevertContext context, SQLPartInfo sqlPart) throws SQLException {
-		PreparedStatement ps = null;
-		Connection conn = null;
-		try {
-			conn = ds.getConnection();
-			ps = conn.prepareStatement(context.getSelectSQL());
-			if (context.getSelectParam() != null) {
-				for (int i = 0; i < context.getSelectParam().length; i++) {
-					ps.setObject(i + 1, context.getSelectParam()[i]);
-				}
-			}
+    /**Fill query result into revert context.
+     * 
+     * @param context revert context
+     * @param sqlPart origin sql parts
+     * @throws SQLException failed to execute sql throw exception
+     */
+    private void fillSelectResult(final RevertContext context, final SQLPartInfo sqlPart) throws SQLException {
+        PreparedStatement ps = null;
+        Connection conn = null;
+        try {
+            conn = ds.getConnection();
+            ps = conn.prepareStatement(context.getSelectSQL());
+            if (context.getSelectParam() != null) {
+                for (int i = 0; i < context.getSelectParam().length; i++) {
+                    ps.setObject(i + 1, context.getSelectParam()[i]);
+                }
+            }
 
-			ResultSet rs = ps.executeQuery();
-			ResultSetMetaData rsMeta = rs.getMetaData();
-			int columnCount = rsMeta.getColumnCount();
-			while (rs.next()) {
-				Map<String, Object> rowResultMap = new LinkedHashMap<>();
-				context.getSelectResult().add(rowResultMap);
-				for (int i = 1; i <= columnCount; i++) {
-					rowResultMap.put(rsMeta.getColumnName(i), rs.getObject(i));
-				}
-			}
-		} finally {
-			closePsAndConn(conn, ps);
-		}
-	}
+            ResultSet rs = ps.executeQuery();
+            ResultSetMetaData rsMeta = rs.getMetaData();
+            int columnCount = rsMeta.getColumnCount();
+            while (rs.next()) {
+                Map<String, Object> rowResultMap = new LinkedHashMap<>();
+                context.getSelectResult().add(rowResultMap);
+                for (int i = 1; i <= columnCount; i++) {
+                    rowResultMap.put(rsMeta.getColumnName(i), rs.getObject(i));
+                }
+            }
+        } finally {
+            closePsAndConn(conn, ps);
+        }
+    }
 
-	private void fillRevertSql(RevertContext context, SQLPartInfo sqlPart) {
-		StringBuilder builder = new StringBuilder();
-		if (DMLType.DELETE == sqlPart.getType()) {
-			if (context.getSelectResult() != null && !context.getSelectResult().isEmpty()) {
-				builder.append("insert into ").append(sqlPart.getUpdateTable()).append(" values(");
+    /**Get and fill revert sql.
+     * 
+     * @param context revert context
+     * @param sqlPart origin sql parts
+     */
+    private void fillRevertSql(final RevertContext context, final SQLPartInfo sqlPart) {
+        if (context.getSelectResult() == null || context.getSelectResult().isEmpty()) {
+            return;
+        }
+        
+        StringBuilder builder = new StringBuilder();
+        if (DMLType.DELETE == sqlPart.getType()) {
+            fillRevertSqlForDelete(context, sqlPart);
+        } else if (DMLType.UPDATE == sqlPart.getType()) {
+            fillRevertSqlForUpdate(context, sqlPart);
+        } else if (DMLType.INSERT == sqlPart.getType()) {
+            fillRevertSqlForInsert(context, sqlPart);
+        }
 
-				for (Map<String, Object> each : context.getSelectResult()) {
-					context.getRevertParam().add(each.values());
-				}
+        context.setRevertSQL(builder.toString());
+    }
+    
+    /**Get and fill revert sql for delete.
+     * 
+     * @param context revert context
+     * @param sqlPart origin sql parts
+     */
+    private void fillRevertSqlForDelete(final RevertContext context, final SQLPartInfo sqlPart) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("insert into ").append(sqlPart.getUpdateTable()).append(" values(");
 
-				int length = context.getSelectResult().get(0).size();
-				for (int i = 0; i < length; i++) {
-					builder.append("?");
-					if (i < length - 1) {
-						builder.append(",");
-					}
-				}
+        for (Map<String, Object> each : context.getSelectResult()) {
+            context.getRevertParam().add(each.values());
+        }
 
-				builder.append(" )");
-			}
-		} else if (DMLType.UPDATE == sqlPart.getType()) {
-			if (context.getSelectResult() != null && !context.getSelectResult().isEmpty()) {
-				builder.append("update ").append(sqlPart.getUpdateTable()).append(" set ");
-				int pos = 0;
-				for (String updateColumn : sqlPart.getUpdateColumns()) {
-					builder.append(updateColumn).append(" = ?");
-					if (pos < sqlPart.getUpdateColumns().size() - 1) {
-						builder.append(",");
-					}
-					pos++;
-				}
+        int length = context.getSelectResult().get(0).size();
+        for (int i = 0; i < length; i++) {
+            builder.append("?");
+            if (i < length - 1) {
+                builder.append(",");
+            }
+        }
 
-				builder.append(" where ");
-				pos = 0;
-				for (String key : keys) {
-					if (pos > 0) {
-						builder.append(" and ");
-					}
-					builder.append(key).append(" = ? ");
-					pos++;
+        builder.append(" )");
+        context.setRevertSQL(builder.toString());
+    }
+    
+    /**Get and fill revert sql for update.
+     * 
+     * @param context revert context
+     * @param sqlPart origin sql parts
+     */
+    private void fillRevertSqlForUpdate(final RevertContext context, final SQLPartInfo sqlPart) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("update ").append(sqlPart.getUpdateTable()).append(" set ");
+        int pos = 0;
+        for (String updateColumn : sqlPart.getUpdateColumns()) {
+            builder.append(updateColumn).append(" = ?");
+            if (pos < sqlPart.getUpdateColumns().size() - 1) {
+                builder.append(",");
+            }
+            pos++;
+        }
 
-				}
+        builder.append(" where ");
+        pos = 0;
+        for (String key : keys) {
+            if (pos > 0) {
+                builder.append(" and ");
+            }
+            builder.append(key).append(" = ? ");
+            pos++;
 
-				List<Map<String, Object>> selectResult = context.getSelectResult();
-				for (Map<String, Object> rowResult : selectResult) {
-					List<Object> rowRevertParam = new ArrayList<>();
-					context.getRevertParam().add(rowRevertParam);
+        }
 
-					for (String updateColumn : sqlPart.getUpdateColumns()) {
-						rowRevertParam.add(rowResult.get(updateColumn));
-					}
+        List<Map<String, Object>> selectResult = context.getSelectResult();
+        for (Map<String, Object> rowResult : selectResult) {
+            List<Object> rowRevertParam = new ArrayList<>();
+            context.getRevertParam().add(rowRevertParam);
 
-					for (String key : keys) {
-						rowRevertParam.add(rowResult.get(key));
-					}
-				}
+            for (String updateColumn : sqlPart.getUpdateColumns()) {
+                rowRevertParam.add(rowResult.get(updateColumn));
+            }
 
-			}
-		} else if (DMLType.INSERT == sqlPart.getType()) {
-			builder.append(" delete from ").append(sqlPart.getUpdateTable());
-			builder.append(" where ");
-			int pos = 0;
-			for (Object key : keys) {
-				if (pos > 0) {
-					builder.append(" and ");
-				}
+            for (String key : keys) {
+                rowRevertParam.add(rowResult.get(key));
+            }
+        }
+        context.setRevertSQL(builder.toString());
+    }
+    
+    /**Get and fill revert sql for insert.
+     * 
+     * @param context revert context
+     * @param sqlPart origin sql parts
+     */
+    private void fillRevertSqlForInsert(final RevertContext context, final SQLPartInfo sqlPart) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(" delete from ").append(sqlPart.getUpdateTable());
+        builder.append(" where ");
+        int pos = 0;
+        for (Object key : keys) {
+            if (pos > 0) {
+                builder.append(" and ");
+            }
 
-				builder.append(key).append(" = ?");
-				pos++;
-			}
+            builder.append(key).append(" = ?");
+            pos++;
+        }
 
-			pos = 0;
-			for (Object param : params) {
-				if (pos % keys.size() == 0) {
-					context.getRevertParam().add(new ArrayList<>());
-				}
-				List<Object> rowRevertParam = (List<Object>) context.getRevertParam()
-						.get(context.getRevertParam().size() - 1);
-				rowRevertParam.add(param);
-				pos++;
-			}
-		}
+        pos = 0;
+        for (Object param : params) {
+            if (pos % keys.size() == 0) {
+                context.getRevertParam().add(new ArrayList<>());
+            }
+            List<Object> rowRevertParam = (List<Object>) context.getRevertParam()
+                    .get(context.getRevertParam().size() - 1);
+            rowRevertParam.add(param);
+            pos++;
+        }
 
-		context.setRevertSQL(builder.toString());
-	}
+        context.setRevertSQL(builder.toString());
+    }
 
-	public void revert() throws SQLException {
-		for (Collection<Object> rowParam : context.getRevertParam()) {
-			PreparedStatement ps = null;
-			Connection conn = null;
-			try {
-				conn = ds.getConnection();
-				ps = conn.prepareStatement(context.getRevertSQL());
-				if (rowParam != null) {
-					Iterator<Object> it = rowParam.iterator();
-					int i = 0;
-					while (it.hasNext()) {
-						ps.setObject(i + 1, it.next());
-						i++;
-					}
-				}
+    /**Revert data to snapshot.
+     * 
+     * @throws SQLException failed to execute sql throw exception
+     */
+    public void revert() throws SQLException {
+        for (Collection<Object> rowParam : context.getRevertParam()) {
+            PreparedStatement ps = null;
+            Connection conn = null;
+            try {
+                conn = ds.getConnection();
+                ps = conn.prepareStatement(context.getRevertSQL());
+                if (rowParam != null) {
+                    Iterator<Object> it = rowParam.iterator();
+                    int i = 0;
+                    while (it.hasNext()) {
+                        ps.setObject(i + 1, it.next());
+                        i++;
+                    }
+                }
 
-				ps.execute();
-			} finally {
-				closePsAndConn(conn, ps);
-			}
-		}
-	}
+                ps.execute();
+            } finally {
+                closePsAndConn(conn, ps);
+            }
+        }
+    }
 
-	private void closePsAndConn(Connection conn, PreparedStatement ps) {
-		if (ps != null) {
-			try {
-				ps.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		}
+    /**Close sql statement and connection.
+     * 
+     * @param conn sql connection
+     * @param ps sql prepared statement
+     */
+    private void closePsAndConn(final Connection conn, final PreparedStatement ps) {
+        if (ps != null) {
+            try {
+                ps.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
 
-		if (conn != null) {
-			try {
-				conn.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		}
-	}
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

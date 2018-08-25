@@ -1,3 +1,20 @@
+/*
+ * Copyright 2016-2018 shardingsphere.io.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * </p>
+ */
+
 package io.shardingsphere.revert.builder.factory.mysql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -7,25 +24,35 @@ import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 
 public abstract class AbstractBuilderFactory implements BuilderFactory {
 
-	/**
-	 * @param sql
-	 * @return
-	 */
-	protected abstract ParserRuleContext getRoot(String sql);
+    /**
+     * Get root node of syntax tree.
+     * 
+     * @param sql dml sql statement
+     * @return root node of syntax tree
+     */
+    protected abstract ParserRuleContext getRoot(String sql);
 
-	/**
-	 * @param root
-	 * @return
-	 */
-	protected abstract SQLPartBuilder getBuilder(ParserRuleContext root);
+    /**
+     * Get dml builder.
+     * 
+     * @param root node of syntax tree
+     * @return sql part info
+     */
+    protected abstract SQLPartBuilder getBuilder(ParserRuleContext root);
 
-	@Override
-	public final SQLPartInfo build(String sql) {
-		ParserRuleContext root = getRoot(sql);
-		SQLPartBuilder builder = getBuilder(root);
-		SQLPartInfo sqlPart = new SQLPartInfo(builder.getType(), sql);
-		builder.build(sqlPart, root);
-		return sqlPart;
-	}
+    /**
+     * build dml sql statement.
+     * 
+     * @param sql dml sql statement
+     * @return sql part info
+     */
+    @Override
+    public final SQLPartInfo build(final String sql) {
+        ParserRuleContext root = getRoot(sql);
+        SQLPartBuilder builder = getBuilder(root);
+        SQLPartInfo sqlPart = new SQLPartInfo(builder.getType(), sql);
+        builder.build(sqlPart, root);
+        return sqlPart;
+    }
 
 }
