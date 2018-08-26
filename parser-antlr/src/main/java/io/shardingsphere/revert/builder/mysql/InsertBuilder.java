@@ -25,7 +25,7 @@ import io.shardingsphere.revert.builder.factory.SQLPartInfo;
 
 public final class InsertBuilder extends AbstractSQLPartBuilder {
     public InsertBuilder() {
-        this.setType(DMLType.DELETE);
+        this.setType(DMLType.INSERT);
     }
 
     @Override

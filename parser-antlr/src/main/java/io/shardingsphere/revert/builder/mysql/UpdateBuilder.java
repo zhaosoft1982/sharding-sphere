@@ -35,7 +35,7 @@ import io.shardingsphere.utils.TreeUtils;
 
 public final class UpdateBuilder extends AbstractSQLPartBuilder {
     public UpdateBuilder() {
-        this.setType(DMLType.DELETE);
+        this.setType(DMLType.UPDATE);
     }
 
     @Override
