@@ -264,11 +264,12 @@ public final class SnapshotEngine {
      * @param sqlPart origin sql parts
      */
     private void fillRevertSql(final RevertContext context, final SQLPartInfo sqlPart) {
-        if (context.getSelectResult() == null || context.getSelectResult().isEmpty()) {
-            return;
+        if (DMLType.INSERT != sqlPart.getType()) {
+            if (context.getSelectResult() == null || context.getSelectResult().isEmpty()) {
+                return;
+            }
         }
         
-        StringBuilder builder = new StringBuilder();
         if (DMLType.DELETE == sqlPart.getType()) {
             fillRevertSqlForDelete(context, sqlPart);
         } else if (DMLType.UPDATE == sqlPart.getType()) {
@@ -276,8 +277,6 @@ public final class SnapshotEngine {
         } else if (DMLType.INSERT == sqlPart.getType()) {
             fillRevertSqlForInsert(context, sqlPart);
         }
-
-        context.setRevertSQL(builder.toString());
     }
     
     /**Get and fill revert sql for delete.
